@@ -1,0 +1,22 @@
+.button{
+    -fx-pref-width: 150px;
+    /*-fx-background-color: green;*/
+    -fx-border-radius: 10px;
+    -fx-border-color: black;
+    -fx-border-radius: 3px;
+}
+
+.root{
+    -fx-background-color: #FFF8DC;
+}
+
+.grid-pane{
+    -fx-hgap: 10px;
+    -fx-vgap: 10px;
+    -fx-alignment: center;
+    -fx-padding: 25,25,25,25;
+/*            grid.setAlignment(Pos.CENTER);
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(25,25,25,25));*/
+}
