@@ -1,0 +1,2 @@
+Connecting to local mySQL database as "root" with passoword: "abcd",
+I'm going to change that by adding log-in screen letting you put your own credentials.
