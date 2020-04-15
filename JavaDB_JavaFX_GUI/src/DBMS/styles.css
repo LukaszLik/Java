@@ -20,3 +20,37 @@
         grid.setVgap(10);
         grid.setPadding(new Insets(25,25,25,25));*/
 }
+
+/*.table-view .show-hide-columns-button {*/
+/*    -fx-background-color: blue;*/
+/*    -fx-border-color:  -fx-box-vorder;*/
+/*    -fx-border-insets: -1 -1 0 0;*/
+/*}*/
+
+/*.table-view .column-header,*/
+/*.table-view .column-header .filler,*/
+/*.table-view .column-header-background .filler {*/
+/*    -fx-background-color: red;*/
+/*}*/
+
+/*.table-view{*/
+/*    -fx-background-color: transparent;*/
+
+/*}*/
+
+/*.table-view .column-header{*/
+/*    -fx-background-color: transparent;*/
+/*}*/
+
+/*.table-view .table-cell{*/
+/*    -fx-background-color: #6DC08A;*/
+/*}*/
+
+/*.table-row-cell{*/
+/*    -fx-background-color: #6DC08A;*/
+/*}*/
+
+/*.table-row-cell:odd{*/
+/*    -fx-background-color: #A2D7B5;*/
+/*    -fx-background-insets: 0, 0 0 1 0;*/
+/*}*/

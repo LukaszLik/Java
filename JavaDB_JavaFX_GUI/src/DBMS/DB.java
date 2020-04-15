@@ -1,5 +1,6 @@
 package DBMS;
 import javax.xml.transform.Result;
+import java.io.StringBufferInputStream;
 import java.sql.*;
 import java.util.*;
 
@@ -9,15 +10,17 @@ public class DB {
     private static Statement stmt;
     private static Connection conn = null;
     private static String name;
+    private static String url;
 
     public DB (String name)
     {
         this.name = name;
+        this.url = "jdbc:mysql://localhost/Library?user=root&password=abcd&characterEncoding=utf8";
         try {
             // The newInstance() call is a work around for some
             // broken Java implementations
 
-            Class.forName("com.mysql.cj.jdbc.Driver").newInstance();
+            Class.forName("com.mysql.cj.jdbc.Driver");
             System.out.println("object created");
         }
 
@@ -31,14 +34,10 @@ public class DB {
     }
 
     private void createNewDB(){
-        try {
-            conn = DriverManager.getConnection("jdbc:mysql://localhost/?user=root&password=abcd");
-            stmt = conn.createStatement();
-            int result = stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS LIBRARY CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci");
-
-            stmt.close();
-            conn.close();
-
+        try (Connection con = DriverManager.getConnection("jdbc:mysql://localhost/?user=root&password=abcd&characterEncoding=utf8");
+        Statement stmt = con.createStatement() ){
+            System.out.println("creating new DB");
+            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS Library CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci");
         }
 
         catch (SQLException ex){
@@ -49,10 +48,11 @@ public class DB {
                 + "Name VARCHAR(45) NOT NULL, Surname VARCHAR(45) NOT NULL,"
                 + "PESEL VARCHAR(12) NOT NULL UNIQUE, PRIMARY KEY (ReaderID))";
 
-        //--------------------------------------
-        //add book author!!!
+//        --------------------------------------
         String createBooksTableStatement = "CREATE TABLE IF NOT EXISTS Books(BookID int(11) NOT NULL AUTO_INCREMENT,"
-                + "Title VARCHAR(100) NOT NULL, ReleaseYear int(5) NOT NULL,"
+                + "Title VARCHAR(100) NOT NULL, "
+                + "Author VARCHAR(100) NOT NULL,"
+                + "ReleaseYear int(5) NOT NULL,"
                 + "Type VARCHAR(25) NOT NULL, PRIMARY KEY (BookID))";
         //--------------------------------------
 
@@ -64,7 +64,7 @@ public class DB {
                 + "FOREIGN KEY (ReaderID) REFERENCES Readers(ReaderID) ON DELETE CASCADE, UNIQUE (BookID))";
 
         try{
-            conn = DriverManager.getConnection("jdbc:mysql://localhost/LIBRARY?user=root&password=abcd");
+            conn = DriverManager.getConnection(url);
 
             System.out.println("adding tables");
             stmt = conn.createStatement();
@@ -81,19 +81,17 @@ public class DB {
         catch (SQLException ex){
             ex.printStackTrace();
         }
-
-
-
     }
     
     public static void add_reader(String name, String surname, String pesel)
     {
         try
         {
-            conn = DriverManager.getConnection("jdbc:mysql://localhost/LIBRARY?user=root&password=abcd");
+            conn = DriverManager.getConnection(url);
             //stmt = conn.createStatement();
 
             String addStatement = "INSERT INTO Readers (Name, Surname, PESEL) VALUES (?,?,?)";
+            System.out.println(name + " " + surname + " " + pesel);
             PreparedStatement preparedStmt = conn.prepareStatement(addStatement);
             preparedStmt.setString(1, name);
             preparedStmt.setString(2, surname);
@@ -113,93 +111,49 @@ public class DB {
         }
     }
 
+    public static void delete_reader(int id){
+        String deleteStatement = "DELETE FROM Readers WHERE ReaderID = ?";
+
+        try (Connection con = DriverManager.getConnection(url);
+            PreparedStatement prepStmt = con.prepareStatement(deleteStatement)){
+                prepStmt.setInt(1, id);
+                prepStmt.execute();
+
+        } catch (SQLException e){
+            e.printStackTrace();
+        }
+    }
+
     public static void delete_reader(String name, String surname)
     {
-        try
-        {
-            conn = DriverManager.getConnection("jdbc:mysql://localhost/LIBRARY?user=root&password=abcd");
-            String deleteStatement = "DELETE FROM Readers WHERE ReaderID = ?";
-            String searchStatement = "SELECT * FROM Readers WHERE Name LIKE ? AND Surname LIKE ?";
-            PreparedStatement preparedStmt = conn.prepareStatement(searchStatement);
+        String deleteStatement = "DELETE FROM Readers WHERE (Name LIKE ? AND Surname LIKE ?)";
+        try(Connection con = DriverManager.getConnection(url);
+            PreparedStatement preparedStmt = con.prepareStatement(deleteStatement)) {
+
             preparedStmt.setString(1,name);
             preparedStmt.setString(2,surname);
-
-            ResultSet rs = preparedStmt.executeQuery();
-
-            // checking whether there is a single person with given name or multiple
-            int rsCounter = 0;
-            int readerID = 0;
-            while(rs.next())
-            {
-                rsCounter++;
-                readerID = rs.getInt("ReaderID");
-
-                if(rsCounter > 1)
-                    break;
-            }
-
-            if(rsCounter == 1)
-            {
-                preparedStmt = conn.prepareStatement(deleteStatement);
-                preparedStmt.setInt(1, readerID);
-                preparedStmt.execute();
-
+            preparedStmt.execute();
+            System.out.println(preparedStmt);
                 System.out.println("Succesfully deleted " + name + " " + surname + " from the database.\n");
-            }
-
-            else
-            {
-                rs.beforeFirst();
-                ResultSetMetaData rsmd = rs.getMetaData();
-                int columnsNumber = rsmd.getColumnCount();
-
-                while (rs.next())
-                {
-                    for (int i = 1; i <= columnsNumber; i++)
-                    {
-                        String columnValue = rs.getString(i);
-                        System.out.print( rsmd.getColumnName(i)+ " - " + columnValue + " | ");
-                    }
-
-                    System.out.println("");
-                }
-
-                System.out.println("Which person would you like to delete? Please type ID in.");
-                Scanner inputScanner = new Scanner(System.in);
-                String id = inputScanner.nextLine();
-
-                preparedStmt = conn.prepareStatement(deleteStatement);
-                preparedStmt.setInt(1, Integer.parseInt(id));
-                preparedStmt.execute();
-
-                conn.close();
-                preparedStmt.close();
-                rs.close();
-
-                System.out.println("Succesfully deleted " + name + " " + surname + " from the database.\n");
-            }
-
-        }
-
-        catch (SQLException ex)
+        } catch (SQLException ex)
         {
             ex.printStackTrace();
         }
-
     }
 
-    public static void add_book(String title, int releaseYear, String type)
+    public static void add_book(String title, String author, int releaseYear, String type)
     {
         try
         {
-            conn = DriverManager.getConnection("jdbc:mysql://localhost/LIBRARY?user=root&password=abcd");
+            conn = DriverManager.getConnection(url);
             //stmt = conn.createStatement();
 
-            String addStatement = "INSERT INTO Books (Title, ReleaseYear, Type) VALUES (?,?,?)";
+            String addStatement = "INSERT INTO Books (Title, Author, ReleaseYear, Type) VALUES (?,?,?,?)";
             PreparedStatement preparedStmt = conn.prepareStatement(addStatement);
             preparedStmt.setString(1, title);
-            preparedStmt.setInt(2, releaseYear);
-            preparedStmt.setString(3, type);
+            preparedStmt.setString(2, author);
+            preparedStmt.setInt(3, releaseYear);
+            preparedStmt.setString(4, type);
             preparedStmt.execute();
 
             conn.close();                                                                                               
@@ -215,71 +169,44 @@ public class DB {
         }
     }
 
+    public static void delete_book(int id){
+        String deleteStatement = "DELETE FROM Books WHERE BookID = ?";
+
+        try (Connection con = DriverManager.getConnection(url);
+             PreparedStatement prepStmt = con.prepareStatement(deleteStatement)){
+            prepStmt.setInt(1, id);
+            prepStmt.execute();
+
+        } catch (SQLException e){
+            e.printStackTrace();
+        }
+    }
+
     public static void delete_book(String title)
     {
-        try
-        {
-            conn = DriverManager.getConnection("jdbc:mysql://localhost/LIBRARY?user=root&password=abcd");
-            String deleteStatement = "DELETE FROM Books WHERE BookID = ?";
-            String searchStatement = "SELECT * FROM Books WHERE Title LIKE ?";
-            PreparedStatement preparedStmt = conn.prepareStatement(searchStatement);
+        String deleteStatement = "DELETE FROM Books WHERE Title LIKE ?";
+        try(Connection con = DriverManager.getConnection(url);
+            PreparedStatement preparedStmt = con.prepareStatement(deleteStatement)) {
+
             preparedStmt.setString(1,title);
+            preparedStmt.execute();
+            System.out.println(preparedStmt);
+            System.out.println("Succesfully deleted " + title);
+        } catch (SQLException ex)
+        {
+            ex.printStackTrace();
+        }
+    }
 
-            ResultSet rs = preparedStmt.executeQuery();
+    public static void borrowBook(int readerID, int bookID){
+        String borrowStatement = "INSERT INTO Borrowed (ReaderID, BookID, ReturnDate) VALUES (?, ?, CURDATE()+ INTERVAL 21 DAY)";
 
-            // checking whether there is a single person with given name or multiple
-            int rsCounter = 0;
-            int bookID = 0;
-            while(rs.next())
-            {
-                rsCounter++;
-                bookID = rs.getInt("BookID");
+        try(Connection con = DriverManager.getConnection(url);
+        PreparedStatement preparedStatement = con.prepareStatement(borrowStatement)){
+            preparedStatement.setInt(1, readerID);
+            preparedStatement.setInt(2, bookID);
 
-                if(rsCounter > 1)
-                    break;
-            }
-
-            if(rsCounter == 1)
-            {
-                preparedStmt = conn.prepareStatement(deleteStatement);
-                preparedStmt.setInt(1, bookID);
-                preparedStmt.execute();
-
-                System.out.println("Successfully deleted \"" + title + "\" from the database.\n");
-            }
-
-            else
-            {
-                rs.beforeFirst();
-                ResultSetMetaData rsmd = rs.getMetaData();
-                int columnsNumber = rsmd.getColumnCount();
-
-                while (rs.next())
-                {
-                    for (int i = 1; i <= columnsNumber; i++)
-                    {
-                        String columnValue = rs.getString(i);
-                        System.out.print( rsmd.getColumnName(i)+ " - " + columnValue + " | ");
-                    }
-
-                    System.out.println("");
-                }
-
-                System.out.println("Which book would you like to delete? Please type ID in.");
-                Scanner inputScanner = new Scanner(System.in);
-                String id = inputScanner.nextLine();
-
-                preparedStmt = conn.prepareStatement(deleteStatement);
-                preparedStmt.setInt(1, Integer.parseInt(id));
-                preparedStmt.execute();
-
-                System.out.println("Successfully deleted \"" + title + "\" from the database.\n");
-            }
-
-            conn.close();
-            preparedStmt.close();
-            rs.close();
-
+            preparedStatement.execute();
         }
 
         catch (SQLException ex)
@@ -287,7 +214,6 @@ public class DB {
             ex.printStackTrace();
         }
     }
-
 
     public static void borrow_book(String name, String surname, String title)
     {
@@ -297,7 +223,7 @@ public class DB {
 
         try
         {
-            conn = DriverManager.getConnection("jdbc:mysql://localhost/LIBRARY?user=root&password=abcd");   
+            conn = DriverManager.getConnection(url);
             stmt = conn.createStatement();
 
             PreparedStatement preparedStmt = conn.prepareStatement(findPerson);
@@ -400,13 +326,13 @@ public class DB {
 
     }
 
-    public List <HashMap<String, Object>> resultSetToArrayList(ResultSet rs) throws SQLException{
+    public List <LinkedHashMap<String, Object>> resultSetToArrayList(ResultSet rs) throws SQLException{
         ResultSetMetaData md = rs.getMetaData();
         int columns = md.getColumnCount();
 
-        List <HashMap<String, Object>> list = new ArrayList <HashMap<String, Object>>();
+        List <LinkedHashMap<String, Object>> list = new ArrayList <LinkedHashMap<String, Object>>();
         while (rs.next()){
-            HashMap <String, Object> row = new HashMap <String, Object>(columns);
+            LinkedHashMap <String, Object> row = new LinkedHashMap <String, Object>(columns);
 
             for (int i = 1; i <= columns; i++){
                 row.put(md.getColumnName(i), rs.getObject(i));
@@ -417,11 +343,11 @@ public class DB {
         return list;
     }
 
-    public List<HashMap<String,Object>> findPerson(String name, String surname){
+    public List<LinkedHashMap<String,Object>> findPerson(String name, String surname){
         String sql = "SELECT * FROM Readers WHERE (Name LIKE ? AND Surname LIKE ?)";
-        List<HashMap <String,Object>> list = new ArrayList<HashMap<String, Object>>();
+        List<LinkedHashMap<String, Object>> list = new ArrayList<LinkedHashMap<String, Object>>();
 
-        try( Connection con = DriverManager.getConnection("jdbc:mysql://localhost/LIBRARY?user=root&password=abcd");
+        try( Connection con = DriverManager.getConnection(url);
          PreparedStatement prepstmt = con.prepareStatement(sql)){
             prepstmt.setString(1, name);
             prepstmt.setString(2,surname);
@@ -436,7 +362,32 @@ public class DB {
             e.printStackTrace();
         }
 
-
         return list;
+    }
+
+    public List<LinkedHashMap<String,Object>> findBook(String title){
+        String sql = "SELECT Books.BookID, Title, Author, ReleaseYear, Type FROM Books LEFT JOIN Borrowed ON Books.BookID = Borrowed.BookID WHERE Borrowed.BorrowedDate IS NULL AND Title LIKE ?";
+        List<LinkedHashMap<String, Object>> list = new ArrayList<LinkedHashMap<String, Object>>();
+
+        //GET RID OF BOOKS THAT ARE BORROWED
+        
+        try( Connection con = DriverManager.getConnection(url);
+             PreparedStatement prepstmtAllBooks = con.prepareStatement(sql)){
+
+            prepstmtAllBooks.setString(1, title);
+
+            try(ResultSet rs = prepstmtAllBooks.executeQuery()) {
+                list = resultSetToArrayList(rs);
+            }
+
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+
+        System.out.println("LISTA = " + list.toString());
+        return list;
+
     }
 }
